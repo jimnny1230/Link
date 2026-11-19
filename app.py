@@ -2,13 +2,21 @@ import streamlit as st
 import requests
 from bs4 import BeautifulSoup
 
-st.set_page_config(page_title="링크 매핑 & 미리보기", page_icon="🔀", layout="centered")
+st.set_page_config(page_title="링크 매핑 & 열기", page_icon="🔀", layout="centered")
 
-st.title("🔀 링크 주소 매핑 & 열기")
-st.caption("입력한 링크를 지정한 대상 주소(예: 포스타입)로 연결합니다. (외부 사이트의 실제 콘텐츠를 임의 주소로 위장해 띄우는 것은 해당 사이트 정책상 제한됩니다.)")
+st.title("🔀 원본 링크 → 포스타입 연결기")
+st.caption("원본 링크를 입력하면 지정한 대상 주소(기본: 포스타입)로 연결합니다.")
 
-source_url = st.text_input("원본 링크 입력", placeholder="예: https://my-link.example/123")
+source_url = st.text_input("원본 링크 입력", placeholder="예: https://youtube.com/... 또는 아무 링크")
 target_url = st.text_input("실제로 열 대상 링크", value="https://www.postype.com/")
+
+def normalize_url(url: str) -> str:
+    u = url.strip()
+    if not u:
+        return ""
+    if not u.startswith(("http://", "https://")):
+        return "https://" + u
+    return u
 
 def fetch_preview(url: str):
     try:
@@ -23,20 +31,24 @@ def fetch_preview(url: str):
     except Exception as e:
         return None, None, str(e)
 
-if target_url:
-    clean_target = target_url.strip()
-    if not clean_target.startswith(("http://", "https://")):
-        clean_target = "https://" + clean_target
+clean_source = normalize_url(source_url)
+clean_target = normalize_url(target_url)
+
+if clean_source:
+    # 원본 링크가 입력되었을 때 대상 링크(기본 포스타입)를 최종 목적지로 사용
+    final_link = clean_target if clean_target else "https://www.postype.com/"
 
     st.markdown("---")
-    st.markdown(f"**입력한 링크:** `{source_url.strip() if source_url.strip() else '(없음)'}`")
-    st.markdown(f"**실제 연결될 링크:** `{clean_target}`")
-    st.link_button("↗️ 대상 링크 새 탭에서 열기", clean_target, use_container_width=True)
+    st.markdown(f"**입력한 원본 링크:** `{clean_source}`")
+    st.markdown(f"**실제 연결될 링크:** `{final_link}`")
+    st.link_button("↗️ 포스타입 새 탭에서 열기", final_link, use_container_width=True)
 
     with st.expander("📄 대상 페이지 미리보기 가져오기"):
-        title, desc, err = fetch_preview(clean_target)
+        title, desc, err = fetch_preview(final_link)
         if err:
             st.warning(f"미리보기를 불러오지 못했습니다: {err}")
         else:
             st.markdown(f"**페이지 제목:** {title}")
             st.markdown(f"**요약:** {desc}")
+else:
+    st.info("위 **원본 링크 입력** 칸에 링크를 먼저 입력해 주세요.")
